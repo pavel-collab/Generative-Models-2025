@@ -74,8 +74,11 @@ def train_ddpm():
         # Прогресс бар для эпохи
         pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{config.num_epochs}')
 
-        for batch_idx, (images, _) in enumerate(pbar):
+        for _, (images, _) in enumerate(pbar):
             images = images.to(device)
+            
+            print(f"[DEBUG] model device {next(ddpm.parameters()).device}")
+            print(f"[DEBUG] image device {images.device}")
 
             # Прямой проход и вычисление loss
             optimizer.zero_grad()

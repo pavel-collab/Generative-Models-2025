@@ -109,8 +109,8 @@ class DDPM(nn.Module):
         if noise is None:
             noise = torch.randn_like(x0)
 
-        sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod, t, x0.shape).to(x0.device)
-        sqrt_one_minus_alphas_cumprod_t = extract(self.sqrt_one_minus_alphas_cumprod, t, x0.shape).to(x0.device)
+        sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod.to(x0.device), t, x0.shape).to(x0.device)
+        sqrt_one_minus_alphas_cumprod_t = extract(self.sqrt_one_minus_alphas_cumprod.to(x0.device), t, x0.shape).to(x0.device)
 
         return sqrt_alphas_cumprod_t * x0 + sqrt_one_minus_alphas_cumprod_t * noise
 
@@ -125,11 +125,18 @@ class DDPM(nn.Module):
         t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
 
         # Добавляем шум
-        noise = torch.randn_like(x0)
+        noise = torch.randn_like(x0).to(device)
+
+        print(f"[DEBUG] moise device {noise.device}")
+        print(f"[DEBU] x0 tensor device {x0.device}")
+        print(f"[DEBUG] t device {t.device}")
+
         x_noisy = self.forward_diffusion(x0, t, noise)
 
         # Предсказываем шум
         noise_pred = self.model(x_noisy, t)
+
+        print(f"[DEBUG] noise_pred device {noise_pred.device}")
 
         return F.mse_loss(noise_pred, noise)
 
