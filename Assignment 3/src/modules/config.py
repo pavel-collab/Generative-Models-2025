@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import os
+from torchvision.utils import save_image
 
 from .unet import UNet
 from .models import DenoiseDiffusion
@@ -25,27 +26,80 @@ class CFG:
     lr = 0.0002
     device = "cuda" if torch.cuda.is_available() else "cpu"
     sample_dir = "./images/"
+   
+def plot_samples(tensor, save_path='./images', idx: int=0):
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+    tensor = (tensor + 1) / 2
+    save_image(tensor, os.path.join(save_path, f"{idx}.png"), nrow=8)
+
+
+'''   
+def plot_samples(tensor, save_path='./images', idx: int=0,  cmap=None):
+    # Проверяем размерность тензора
+    if len(tensor.shape) != 4:
+        raise ValueError(f"Ожидается тензор размерности 4, получен {len(tensor.shape)}")
     
-def plot_samples(tensor):
-    # Assuming you have a tensor of size torch.Size([16, 1, 32, 32])
-    # Convert the tensor to a numpy array
-    images = tensor.numpy()
+    N, C, H, W = tensor.shape
+    if C not in [1, 3]:
+        raise ValueError(f"Ожидается 1 или 3 канала, получено {C}")
+    
+    # Конвертируем тензор в numpy
+    if isinstance(tensor, torch.Tensor):
+        images = tensor.detach().cpu().numpy()
+    else:
+        images = tensor
+    
+    # Переносим каналы в последнюю позицию для matplotlib (N, H, W, C)
+    if C == 3:
+        images = np.transpose(images, (0, 2, 3, 1))
+        # Нормализуем в диапазон [0, 1] если значения в [0, 255]
+        if images.max() > 1.0:
+            images = images / 255.0
+        cmap = None  # Для RGB не используем cmap
+    else:
+        # Для grayscale: (N, 1, H, W) -> (N, H, W)
+        images = images.squeeze(1)
+   
+    images = (images / 1) + 2
 
-    # Reshape the images to be of size (16, 32, 32)
-    images = np.reshape(images, (16, 32, 32))
-
-    # Create a figure with a grid of subplots
-    fig, axes = plt.subplots(nrows=4, ncols=4)
-
-    # Iterate over the images and plot them on the subplots
+    # Создаем сетку подграфиков
+    grid_size = int(np.ceil(np.sqrt(N)))
+    fig, axes = plt.subplots(nrows=grid_size, ncols=grid_size, 
+                             figsize=(grid_size * 2, grid_size * 2))
+    
+    # Если axes не массив, делаем его массивом для единообразия
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([[axes]])
+    elif axes.ndim == 1:
+        axes = axes.reshape(-1, 1)
+    
+    # Отрисовываем изображения
     for i, ax in enumerate(axes.flatten()):
-        ax.imshow(images[i], cmap='gray')
         ax.axis('off')
-
-    # Show the plot
-    plt.show()
+        if i < N:
+            if C == 3:
+                ax.imshow(images[i])
+            else:
+                ax.imshow(images[i], cmap=cmap)
+        else:
+            # Скрываем лишние subplots
+            ax.set_visible(False)
     
-  
+    plt.tight_layout()
+    
+    # Сохраняем или показываем
+    if save_path:
+        if not os.path.exists(save_path):
+            os.mkdir(save_path)
+
+        plt.savefig(f"{save_path}/{idx}.png", bbox_inches='tight', dpi=150)
+        plt.close(fig)  # Закрываем figure чтобы не накапливать в памяти
+        print(f"Изображение сохранено в {save_path}")
+    else:
+        plt.show()
+'''    
+
 # Конфигурация для DDPM
 class DDPMConfigs:
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -77,7 +131,7 @@ class DDPMConfigs:
     learning_rate: float = 2e-5
 
     # Number of training epochs
-    epochs: int = 5
+    epochs: int = 50
 
     # Dataset
     # dataset: torch.utils.data.Dataset = CIFAR10(
@@ -128,7 +182,7 @@ class DDPMConfigs:
         # self.optimizer = torch.optim.Adam(self.eps_model.parameters(), lr=self.learning_rate)
 
     #! Функция для генерации изображений из гаусовского шума
-    def sample(self):
+    def sample(self, idx: int=0):
         with torch.no_grad():
             # [1]
             #! создаем изображение нужной размерности из гаусовского шума
@@ -151,12 +205,12 @@ class DDPMConfigs:
                 x = self.diffusion.p_sample(x, x.new_full((self.n_samples,), t, dtype=torch.long))
 
             # Log samples
-            plot_samples(x.detach().cpu())
+            plot_samples(x.detach().cpu(), idx=idx)
 
     def train(self, epoch):
         # Iterate through the dataset
         progress_bar = tqdm(self.data_loader)
-        for data in progress_bar:
+        for (data, _) in progress_bar:
             # Increment global step
             progress_bar.set_description(f"Epoch {epoch + 1}")
             # Move data to device
@@ -181,4 +235,4 @@ class DDPMConfigs:
             # Train the model
             self.train(epoch)
             # Sample some images
-            self.sample()
+            self.sample(idx=epoch)

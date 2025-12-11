@@ -9,7 +9,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 
-from modules import DDPM, DDPMConfigs, CFG
+from modules import DDPMConfigs, CFG
 
 plt.style.use("ggplot")
 
