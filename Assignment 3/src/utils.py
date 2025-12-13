@@ -1,9 +1,9 @@
 import torch
 import os
 from torch.utils.data import DataLoader
-from pytorch_gan_metrics import (get_inception_score,
-                                 get_fid,
-                                 get_inception_score_and_fid)
+from pytorch_image_generation_metrics import (get_inception_score,
+                                              get_fid,
+                                              get_inception_score_and_fid)
 
 from modules.models import Generator, Discriminator
 from modules.config import CFG
