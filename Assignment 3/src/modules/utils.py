@@ -1,4 +1,5 @@
 import torch 
+import os
 
 # Вспомогательные функции для диффузии
 def get_beta_schedule(timesteps, beta_start=0.0001, beta_end=0.02):

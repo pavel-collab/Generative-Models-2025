@@ -186,7 +186,7 @@ if not os.path.exists(MODEL_SAVE_PATH):
     os.mkdir(MODEL_SAVE_PATH)
 
 torch.save(D.state_dict(), f'{MODEL_SAVE_PATH}/descriminator.pth')
-torch.save(D.state_dict(), f'{MODEL_SAVE_PATH}/generator.pth')
+torch.save(G.state_dict(), f'{MODEL_SAVE_PATH}/generator.pth')
 
 import json
 gan_training_dump = {

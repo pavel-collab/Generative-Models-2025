@@ -5,6 +5,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import os
 
 from .unet import UNet
 from .models import DenoiseDiffusion
@@ -44,6 +45,7 @@ def plot_samples(tensor):
     # Show the plot
     plt.show()
     
+  
 # Конфигурация для DDPM
 class DDPMConfigs:
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -54,7 +56,7 @@ class DDPMConfigs:
     diffusion: DenoiseDiffusion
 
     # Number of channels in the image. 3 for RGB.
-    image_channels: int = 1
+    image_channels: int = 3
     # Image size
     image_size: int = 32
     # Number of channels in the initial feature map
@@ -78,24 +80,26 @@ class DDPMConfigs:
     epochs: int = 5
 
     # Dataset
-    dataset: torch.utils.data.Dataset = CIFAR10(
-                        root=CFG.dataroot,
-                        download=CFG.download,
-                        transform=transforms.Compose(
-                            [
-                                transforms.Resize([CFG.image_size, CFG.image_size]),
-                                transforms.ToTensor(),
-                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                            ]
-                        ),
-                    )
+    # dataset: torch.utils.data.Dataset = CIFAR10(
+    #                     root=CFG.dataroot,
+    #                     download=CFG.download,
+    #                     transform=transforms.Compose(
+    #                         [
+    #                             transforms.Resize([CFG.image_size, CFG.image_size]),
+    #                             transforms.ToTensor(),
+    #                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    #                         ]
+    #                     ),
+    #                 )
+    dataset: torch.utils.data.Dataset = None
+    
     # Dataloader
     data_loader: torch.utils.data.DataLoader
 
     # Adam optimizer
     optimizer: torch.optim.Adam
 
-    def init(self):
+    def init(self, checkpoint_path: str=None):
         # Create epsilon_theta(x_t, t) model
         self.eps_model = UNet(
             image_channels=self.image_channels,
@@ -104,17 +108,24 @@ class DDPMConfigs:
             is_attn=self.is_attention,
         ).to(self.device)
 
+        if checkpoint_path is not None:
+            if os.path.exists(checkpoint_path):
+                eps_model_checkpoint = torch.load(checkpoint_path, map_location=self.device)
+                self.eps_model.load_state_dict(eps_model_checkpoint)
+            else:
+                raise Exception(f"checkpoint file {checkpoint_path} not found") 
+
         # Create DDPM class
         self.diffusion = DenoiseDiffusion(
             eps_model=self.eps_model,
             n_steps=self.n_steps,
             device=self.device,
-        )
+        )   
 
         # Create dataloader
-        self.data_loader = torch.utils.data.DataLoader(self.dataset, self.batch_size, shuffle=True, pin_memory=True)
+        # self.data_loader = torch.utils.data.DataLoader(self.dataset, self.batch_size, shuffle=True, pin_memory=True)
         # Create optimizer
-        self.optimizer = torch.optim.Adam(self.eps_model.parameters(), lr=self.learning_rate)
+        # self.optimizer = torch.optim.Adam(self.eps_model.parameters(), lr=self.learning_rate)
 
     #! Функция для генерации изображений из гаусовского шума
     def sample(self):

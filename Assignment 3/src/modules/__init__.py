@@ -1,2 +1,2 @@
 from .config import CFG, DDPMConfigs
-from .models import Discriminator, Generator, DDPM
+from .models import Discriminator, Generator, DenoiseDiffusion
