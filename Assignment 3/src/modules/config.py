@@ -76,7 +76,6 @@ class DDPMConfigs:
                             ]
                         ),
                     )
-    dataset: torch.utils.data.Dataset = None
     
     # Dataloader
     data_loader: torch.utils.data.DataLoader

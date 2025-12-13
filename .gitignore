@@ -1,3 +1,5 @@
 images
 data
 __pycache__
+models
+train_info
