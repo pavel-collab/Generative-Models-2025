@@ -6,3 +6,4 @@ torchvision
 ipython
 tqdm
 python-dotenv
+pytest
