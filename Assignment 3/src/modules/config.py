@@ -2,8 +2,6 @@ import torch
 from typing import List
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
-import matplotlib.pyplot as plt
-import numpy as np
 from tqdm import tqdm
 import os
 from torchvision.utils import save_image
@@ -139,6 +137,7 @@ class DDPMConfigs:
 
             # Log samples
             plot_samples(x.detach().cpu(), idx=idx)
+            return x
 
     def train(self, epoch):
         # Iterate through the dataset
