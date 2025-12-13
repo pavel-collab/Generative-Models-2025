@@ -21,6 +21,17 @@ python3 train_gan.py
 python3 train_ddpm.py
 ```
 
+Проверка тестами
+```
+cd tests
+pytest model_generation_test.py
+```
+
+```
+cd tests
+pytest model_import_test.py
+```
+
 После тренировки чекпоинты моделей и примеры сгенерированных картинок будут сохранены локально.
 
 Сравнение метрик
