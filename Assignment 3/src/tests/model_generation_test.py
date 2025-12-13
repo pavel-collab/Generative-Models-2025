@@ -45,5 +45,3 @@ def test_ddpm_image_geenration():
         assert False
     else:
         assert True
-        
-        
