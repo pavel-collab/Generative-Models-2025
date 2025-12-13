@@ -33,73 +33,6 @@ def plot_samples(tensor, save_path='./images', idx: int=0):
     tensor = (tensor + 1) / 2
     save_image(tensor, os.path.join(save_path, f"{idx}.png"), nrow=8)
 
-
-'''   
-def plot_samples(tensor, save_path='./images', idx: int=0,  cmap=None):
-    # Проверяем размерность тензора
-    if len(tensor.shape) != 4:
-        raise ValueError(f"Ожидается тензор размерности 4, получен {len(tensor.shape)}")
-    
-    N, C, H, W = tensor.shape
-    if C not in [1, 3]:
-        raise ValueError(f"Ожидается 1 или 3 канала, получено {C}")
-    
-    # Конвертируем тензор в numpy
-    if isinstance(tensor, torch.Tensor):
-        images = tensor.detach().cpu().numpy()
-    else:
-        images = tensor
-    
-    # Переносим каналы в последнюю позицию для matplotlib (N, H, W, C)
-    if C == 3:
-        images = np.transpose(images, (0, 2, 3, 1))
-        # Нормализуем в диапазон [0, 1] если значения в [0, 255]
-        if images.max() > 1.0:
-            images = images / 255.0
-        cmap = None  # Для RGB не используем cmap
-    else:
-        # Для grayscale: (N, 1, H, W) -> (N, H, W)
-        images = images.squeeze(1)
-   
-    images = (images / 1) + 2
-
-    # Создаем сетку подграфиков
-    grid_size = int(np.ceil(np.sqrt(N)))
-    fig, axes = plt.subplots(nrows=grid_size, ncols=grid_size, 
-                             figsize=(grid_size * 2, grid_size * 2))
-    
-    # Если axes не массив, делаем его массивом для единообразия
-    if not isinstance(axes, np.ndarray):
-        axes = np.array([[axes]])
-    elif axes.ndim == 1:
-        axes = axes.reshape(-1, 1)
-    
-    # Отрисовываем изображения
-    for i, ax in enumerate(axes.flatten()):
-        ax.axis('off')
-        if i < N:
-            if C == 3:
-                ax.imshow(images[i])
-            else:
-                ax.imshow(images[i], cmap=cmap)
-        else:
-            # Скрываем лишние subplots
-            ax.set_visible(False)
-    
-    plt.tight_layout()
-    
-    # Сохраняем или показываем
-    if save_path:
-        if not os.path.exists(save_path):
-            os.mkdir(save_path)
-
-        plt.savefig(f"{save_path}/{idx}.png", bbox_inches='tight', dpi=150)
-        plt.close(fig)  # Закрываем figure чтобы не накапливать в памяти
-        print(f"Изображение сохранено в {save_path}")
-    else:
-        plt.show()
-'''    
-
 # Конфигурация для DDPM
 class DDPMConfigs:
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -134,17 +67,17 @@ class DDPMConfigs:
     epochs: int = 50
 
     # Dataset
-    # dataset: torch.utils.data.Dataset = CIFAR10(
-    #                     root=CFG.dataroot,
-    #                     download=CFG.download,
-    #                     transform=transforms.Compose(
-    #                         [
-    #                             transforms.Resize([CFG.image_size, CFG.image_size]),
-    #                             transforms.ToTensor(),
-    #                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    #                         ]
-    #                     ),
-    #                 )
+    dataset: torch.utils.data.Dataset = CIFAR10(
+                        root=CFG.dataroot,
+                        download=CFG.download,
+                        transform=transforms.Compose(
+                            [
+                                transforms.Resize([CFG.image_size, CFG.image_size]),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                            ]
+                        ),
+                    )
     dataset: torch.utils.data.Dataset = None
     
     # Dataloader
@@ -177,9 +110,9 @@ class DDPMConfigs:
         )   
 
         # Create dataloader
-        # self.data_loader = torch.utils.data.DataLoader(self.dataset, self.batch_size, shuffle=True, pin_memory=True)
+        self.data_loader = torch.utils.data.DataLoader(self.dataset, self.batch_size, shuffle=True, pin_memory=True)
         # Create optimizer
-        # self.optimizer = torch.optim.Adam(self.eps_model.parameters(), lr=self.learning_rate)
+        self.optimizer = torch.optim.Adam(self.eps_model.parameters(), lr=self.learning_rate)
 
     #! Функция для генерации изображений из гаусовского шума
     def sample(self, idx: int=0):
