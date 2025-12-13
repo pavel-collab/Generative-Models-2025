@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+from typing import Optional, Tuple
 
 from .spectral_norm import SpectralNorm
 from .unet import UNet
@@ -77,107 +78,121 @@ class Discriminator(nn.Module):
     def forward(self, input):
         return self.main(input).view(-1, 1)
     
+def gather(consts: torch.Tensor, t: torch.Tensor):
+    """Gather consts for t and reshape to feature map shape"""
+    c = consts.gather(-1, t)
+    return c.reshape(-1, 1, 1, 1)
 
-# Класс DDPM для обучения и сэмплирования
-class DDPM(nn.Module):
+class DenoiseDiffusion:
     """
-    Класс для обучения и генерации с помощью DDPM
+    ## Denoise Diffusion
     """
-    def __init__(self, config):
+
+    def __init__(self, eps_model: nn.Module, n_steps: int, device: torch.device):
+        """
+        * eps_model - epsilon_theta(x_t, t) model
+        * n_steps - t
+        * device - the device to place constants on
+        """
         super().__init__()
-        self.config = config
-        self.model = UNet(config)
+        self.eps_model = eps_model
 
-        # Предвычисляем параметры диффузии
-        self.timesteps = config.timesteps
-        self.betas = get_beta_schedule(config.timesteps, config.beta_start, config.beta_end)
-        self.alphas = 1.0 - self.betas
-        self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
-        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1, 0), value=1.0)
+        # Create beta_1 ... beta_T linearly increasing variance schedule
+        self.beta = torch.linspace(0.0001, 0.02, n_steps).to(device)
 
+        # alpha_t = 1 - beta_t
+        self.alpha = 1 - self.beta # YOUR CODE HERE
+        # [1]
+        self.alpha_bar = torch.cumprod(self.alpha, 0) # YOUR CODE HERE
+        # T
+        self.n_steps = n_steps
+        # sigma^2 = beta
+        self.sigma2 = self.beta # YOUR CODE HERE
 
-        # Параметры для обратного процесса
-        self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
-        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)
-        self.sqrt_recip_alphas = torch.sqrt(1.0 / self.alphas)
-        self.posterior_variance = self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
-
-    def forward_diffusion(self, x0, t, noise=None):
+    def q_xt_x0(self, x0: torch.Tensor, t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Прямой процесс диффузии: добавление шума к изображению
+        Get q(x_t|x_0) distribution
+
+        [2]
         """
+        # [3]
+        #! выбираем коэффициенты для шага t
+        mean = gather(self.alpha_bar, t) ** 0.5 * x0
+        # [4]
+        var = 1 - gather(self.alpha_bar, t)
+        return mean, var
+
+    #! генерируем зашемленное изображение, при этом обуславливаясь на предыдущее зашумленное изображение
+    def q_sample(self, x0: torch.Tensor, t: torch.Tensor, eps: Optional[torch.Tensor] = None):
+        """
+        Sample from q(x_t|x_0)
+
+        [5]
+        """
+
+        # [6]
+        if eps is None:
+            eps = torch.randn_like(x0) # YOUR CODE HERE
+
+        # get q(x_t|x_0)
+        mean, var = self.q_xt_x0(x0, t) # YOUR CODE HERE
+        # Sample from q(x_t|x_0)
+        return mean + (var ** 0.5) * eps
+
+    def p_sample(self, xt: torch.Tensor, t: torch.Tensor):
+        """
+        Sample from p_theta(x_{t-1}|x_t)
+
+        [7]
+        """
+
+        # epsilon_theta(x_t, t)
+        #! Берем нашу обученную модель eps_model (она научилась поредсказывать шум) и подаем ей на вход зашумленное изображение и шаг t
+        eps_theta = self.eps_model(xt, t) # YOUR CODE HERE
+        # [8]
+        #! выбираем коэффициенты для шага t
+        alpha_bar = gather(self.alpha_bar, t)
+        # alpha_t
+        #! выбираем коэффициенты для шага t
+        alpha = gather(self.alpha, t)
+        # [9]
+        eps_coef = (1.0 - alpha) / (1.0 - alpha_bar).sqrt() # YOUR CODE HERE
+        # [10]
+        #! на вход получили некоторое изображение xt, теперь удаляем из него шум, который получили с помощью обученной модели
+        mean = (xt - eps_coef * eps_theta) / alpha.sqrt() # YOUR CODE HERE
+        # sigma^2
+        var = gather(self.sigma2, t)
+
+        # [11]
+        expand_dims = xt.dim() - 1
+        #! накидываем маску, чтобы занулить шум там, где t=0
+        mask = (t > 0).float().view(-1, *([1] * expand_dims))
+        eps = torch.randn_like(xt) * mask # YOUR CODE HERE
+        # Sample
+        return mean + (var ** .5) * eps
+
+    def loss(self, x0: torch.Tensor, noise: Optional[torch.Tensor] = None):
+        """
+        Simplified Loss
+
+        [12]
+        """
+        # Get batch size
+        batch_size = x0.shape[0] # YOUR CODE HERE
+        # Get random t for each sample in the batch
+        #! На стадии обучения берем случайный t
+        t = torch.randint(0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long) # YOUR CODE HERE
+
+        # [13]
         if noise is None:
-            noise = torch.randn_like(x0)
+            noise = torch.randn_like(x0) # YOUR CODE HERE
 
-        sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod.to(x0.device), t, x0.shape).to(x0.device)
-        sqrt_one_minus_alphas_cumprod_t = extract(self.sqrt_one_minus_alphas_cumprod.to(x0.device), t, x0.shape).to(x0.device)
+        # Sample x_t for q(x_t|x_0)
+        #! Делаем репараметризацию (reparametrsation trick)
+        xt = self.q_sample(x0, t, noise) # YOUR CODE HERE
+        # [14]
+        #! получаем предсказание обучаемой модели
+        eps_theta = self.eps_model(xt, t) # YOUR CODE HERE
 
-        return sqrt_alphas_cumprod_t * x0 + sqrt_one_minus_alphas_cumprod_t * noise
-
-    def forward(self, x0):
-        """
-        Обучение: предсказываем шум для случайного временного шага
-        """
-        device = x0.device
-        batch_size = x0.shape[0]
-        
-        # Случайный временной шаг
-        t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
-
-        # Добавляем шум
-        noise = torch.randn_like(x0).to(device)
-
-        print(f"[DEBUG] moise device {noise.device}")
-        print(f"[DEBU] x0 tensor device {x0.device}")
-        print(f"[DEBUG] t device {t.device}")
-
-        x_noisy = self.forward_diffusion(x0, t, noise)
-
-        # Предсказываем шум
-        noise_pred = self.model(x_noisy, t)
-
-        print(f"[DEBUG] noise_pred device {noise_pred.device}")
-
-        return F.mse_loss(noise_pred, noise)
-
-    @torch.no_grad()
-    def sample(self, batch_size, device):
-        """
-        Генерация изображений путем постепенного удаления шума
-        """
-        self.model.eval()
-
-        # Начинаем с чистого шума
-        x = torch.randn(batch_size, self.config.in_channels, 
-                       self.config.img_size, self.config.img_size).to(device)
-
-        
-        # Постепенно удаляем шум
-        for i in reversed(range(self.timesteps)):
-            t = torch.full((batch_size,), i, device=device, dtype=torch.long)
-        
-            # Предсказываем шум
-            noise_pred = self.model(x, t)
-        
-            # Параметры для обратного шага
-            alpha_t = extract(self.alphas, t, x.shape).to(device)
-            alpha_cumprod_t = extract(self.alphas_cumprod, t, x.shape).to(device)
-            beta_t = extract(self.betas, t, x.shape).to(device)
-            sqrt_one_minus_alpha_cumprod_t = extract(self.sqrt_one_minus_alphas_cumprod, t, x.shape).to(device)
-            sqrt_recip_alpha_t = extract(self.sqrt_recip_alphas, t, x.shape).to(device)
-
-
-            # Обратный шаг
-            model_mean = sqrt_recip_alpha_t * (
-                x - beta_t * noise_pred / sqrt_one_minus_alpha_cumprod_t
-            )
-
-            if i > 0:
-                noise = torch.randn_like(x)
-                posterior_variance_t = extract(self.posterior_variance, t, x.shape).to(device)
-                x = model_mean + torch.sqrt(posterior_variance_t) * noise
-            else:
-                x = model_mean
-
-        self.model.train()
-        return x
+        # MSE loss
+        return F.mse_loss(eps_theta, noise) # YOUR CODE HERE
