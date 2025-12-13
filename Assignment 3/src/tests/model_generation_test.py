@@ -1,8 +1,8 @@
 import sys
-sys.path.append("..")
+import os
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from dotenv import load_dotenv
-import os
 import torch
 
 from utils import import_pretrained_generator
@@ -14,7 +14,7 @@ def test_generator_image_generation():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     try:
-        G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH'))
+        G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH')).to(device)
         # Генерируем случайный шум
         z = torch.randn(1, 100, 1, 1).to(device)
 
@@ -26,9 +26,9 @@ def test_generator_image_generation():
         img = torch.clamp(img, 0, 1)
     except Exception as ex:
         print(f"Unexpected error: {ex}")
-        return False
+        assert False
     else:
-        return True
+        assert True
     
 def test_ddpm_image_geenration():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,8 +42,8 @@ def test_ddpm_image_geenration():
         samples = torch.clamp(samples, 0, 1)
     except Exception as ex:
         print(f"Unexpected error: {ex}")
-        return False
+        assert False
     else:
-        return True
+        assert True
         
         

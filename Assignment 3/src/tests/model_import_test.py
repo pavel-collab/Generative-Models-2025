@@ -1,8 +1,8 @@
 import sys
-sys.path.append("..")
+import os
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from dotenv import load_dotenv
-import os
 
 from utils import import_pretrained_generator
 from modules import DDPMConfigs
@@ -14,9 +14,9 @@ def test_generator_pretrained_import():
         G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH'))
     except Exception as ex:
         print(f"Unexpected exception: {ex}")
-        return False
+        assert False
     else:
-        return True
+        assert True
     
 def test_ddpm_pretrained_import():
     try:
@@ -26,6 +26,6 @@ def test_ddpm_pretrained_import():
         ddpm.init(checkpoint_path=os.getenv('DDPM_CHECKPOINT_PATH'))
     except Exception as ex:
         print(f"Unexpected exception: {ex}")
-        return False
+        assert False
     else:
-        return True
+        assert True
