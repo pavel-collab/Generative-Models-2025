@@ -23,7 +23,7 @@ cifar_dataset = CIFAR10(
             ),
         )
 
-G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH'))
+G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH')).to(device)
 
 # Create configurations
 ddpm = DDPMConfigs()
