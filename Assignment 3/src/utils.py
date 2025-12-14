@@ -55,12 +55,8 @@ def evaluate_gan(G, z_dim, cifar_dataset, num_samples=5000, device='cuda'):
 
     # Вычисляем IS и FID
     try:
-        IS_mean, IS_std, FID = get_inception_score_and_fid(
-            gen_loader, 
-            './data/cifar10_train_stats.npz',  # Статистики реального датасета
-            verbose=True,
-            use_torch=True
-        )
+        IS_mean, IS_std = get_inception_score(gen_loader, use_torch=True, verbose=True)
+        FID = get_fid(gen_loader, './data/fid_ref.npz', use_torch=True)
 
         print(f"\nРезультаты для GAN:")
         print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
@@ -74,18 +70,6 @@ def evaluate_gan(G, z_dim, cifar_dataset, num_samples=5000, device='cuda'):
 
     except Exception as e:
         print(f"Ошибка при вычислении метрик: {e}")
-        print("Попытка вычислить метрики по отдельности...")
-
-        # Вычисляем IS отдельно
-        IS_mean, IS_std = get_inception_score(gen_loader, use_torch=True, verbose=True)
-
-        print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
-
-        return {
-            'IS_mean': IS_mean,
-            'IS_std': IS_std,
-            'FID': None
-        }
 
 # Функция для вычисления метрик для DDPM
 def evaluate_ddpm(ddpm, cifar_dataset, num_samples=5000, device='cuda'):
@@ -104,12 +88,8 @@ def evaluate_ddpm(ddpm, cifar_dataset, num_samples=5000, device='cuda'):
 
     # Вычисляем IS и FID
     try:
-        IS_mean, IS_std, FID = get_inception_score_and_fid(
-            ddpm_loader,
-            './data/cifar10_train_stats.npz',
-            verbose=True,
-            use_torch=True
-        )
+        IS_mean, IS_std = get_inception_score(ddpm_loader, use_torch=True, verbose=True)
+        FID = get_fid(ddpm_loader, './data/fid_ref.npz', use_torch=True)
 
         print(f"\nРезультаты для DDPM:")
         print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
@@ -123,16 +103,6 @@ def evaluate_ddpm(ddpm, cifar_dataset, num_samples=5000, device='cuda'):
 
     except Exception as e:
         print(f"Ошибка при вычислении метрик: {e}")
-        print("Попытка вычислить метрики по отдельности...")
-
-        IS_mean, IS_std = get_inception_score(ddpm_loader, use_torch=True, verbose=True)
-        print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
-
-        return {
-            'IS_mean': IS_mean,
-            'IS_std': IS_std,
-            'FID': None
-        }
 
 # Функция для вычисления метрик реального датасета
 def evaluate_real_dataset(cifar_dataset, num_samples=5000):
