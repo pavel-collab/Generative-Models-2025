@@ -40,5 +40,5 @@ results, df = run_full_evaluation(
     ddpm=ddpm,
     cifar_dataset=cifar_dataset,
     num_samples=5000,
-    device=device
+    device='cpu'
 )

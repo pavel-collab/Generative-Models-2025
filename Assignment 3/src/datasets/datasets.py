@@ -47,12 +47,16 @@ class DDPMDataset(Dataset):
         self.images = []
         
         with torch.no_grad():
-            for i in range(0, num_samples):
+            '''
+            Если посмтотреть код DDPM консига, то можно обратить внимание на параметр n_samples
+            и понять, что этот класс по умолчанию генерирует данные батчами по n_samples
+            '''
+            for i in range(0, num_samples, self.ddpm.n_samples):
                 samples = self.ddpm.sample()
                 samples = (samples + 1) / 2
                 samples = torch.clamp(samples, 0, 1)
                 self.images.append(samples.cpu())
-                if i % 500 == 0:
+                if (i + self.ddpm.n_samples) % 500 == 0:
                     print(f"Сгенерировано {i}/{num_samples}")
 
 

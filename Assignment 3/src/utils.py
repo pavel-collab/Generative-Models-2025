@@ -56,7 +56,7 @@ def evaluate_gan(G, z_dim, cifar_dataset, num_samples=5000, device='cuda'):
     # Вычисляем IS и FID
     try:
         IS_mean, IS_std = get_inception_score(gen_loader, use_torch=True, verbose=True)
-        FID = get_fid(gen_loader, './data/fid_ref.npz', use_torch=True)
+        FID = get_fid(gen_loader, './data/cifar10_stats.npz', use_torch=True)
 
         print(f"\nРезультаты для GAN:")
         print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
@@ -89,7 +89,7 @@ def evaluate_ddpm(ddpm, cifar_dataset, num_samples=5000, device='cuda'):
     # Вычисляем IS и FID
     try:
         IS_mean, IS_std = get_inception_score(ddpm_loader, use_torch=True, verbose=True)
-        FID = get_fid(ddpm_loader, './data/fid_ref.npz', use_torch=True)
+        FID = get_fid(ddpm_loader, './data/cifar10_stats.npz', use_torch=True)
 
         print(f"\nРезультаты для DDPM:")
         print(f"  Inception Score: {IS_mean:.3f} ± {IS_std:.3f}")
