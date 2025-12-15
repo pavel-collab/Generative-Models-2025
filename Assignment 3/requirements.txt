@@ -7,4 +7,5 @@ ipython
 tqdm
 python-dotenv
 pytest
+pandas
 scipy

@@ -45,6 +45,12 @@ python -m pytorch_image_generation_metrics.fid_ref \
         --output data/fid_ref.npz
 ```
 
+DEPRICATED!!
+Вместо получения статистик вручную использовать подготовленные данные
+```
+wget https://www.cs.cmu.edu/~clean-fid/stats/cifar10_legacy_pytorch_train_32.npz -O cifar10_stats.npz
+```
+
 Сравнение метрик
 ```
 python3 ./evaludate.py
