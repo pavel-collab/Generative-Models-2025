@@ -9,8 +9,6 @@ from modules import CFG, DDPMConfigs
 
 load_dotenv()
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 cifar_dataset = CIFAR10(
             root=CFG.dataroot,
             download=CFG.download,
@@ -23,7 +21,12 @@ cifar_dataset = CIFAR10(
             ),
         )
 
-G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH')).to(device)
+'''
+Load generator on cpu, because pytorch_image_generation_metrics using multiprocessing,
+when Linux fork the process it inherit the cuda context and can trigger an Error. Because of that we're
+loading GAN on cpu.
+'''
+G = import_pretrained_generator(checkpoint_path=os.getenv('GENERATOR_CHECKPOINT_PATH')).to('cpu')
 
 # Create configurations
 ddpm = DDPMConfigs()

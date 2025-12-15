@@ -39,7 +39,7 @@ class DDPMDataset(Dataset):
         self.ddpm = ddpm
         self.num_samples = num_samples
         self.device = device
-        self.ddpm.eval()
+        self.ddpm.eps_model.eval()
 
         # Предгенерируем все изображения (может занять время)
         print(f"Предгенерация {num_samples} изображений из DDPM...")
