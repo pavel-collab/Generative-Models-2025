@@ -5,6 +5,10 @@ import argparse
 import os
 from tqdm import tqdm
 
+'''
+Copyrite: https://gist.github.com/juliensimon/273bef4c5b4490c687b2f92ee721b546
+'''
+
 def extractImagesAndLabels(path, file):
     with open(path+file, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
